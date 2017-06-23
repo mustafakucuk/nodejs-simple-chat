@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <title>NodeJS simple chat system</title>
+    <link rel="stylesheet" type="text/css" href="./chat.css">
+  </head>
+  <body>
+
+  	<div class="wrapper">
+    <div class="container">
+        <div class="left">
+            <div class="top">
+            <h1>Online Users</h1>
+            </div>
+
+            <ul class="people"></ul>
+        </div>
+
+        <div class="right">
+            <div class="chat">
+            </div>
+           <form>
+           	 	<div class="write">
+            	    <input type="text" id="m" />
+            	</div>
+           </form>
+        </div>
+    </div>
+</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+    	var socket = io();
+    	var nickName;
+    	do{
+    		nickName = prompt("Please enter nickName");
+    	}while( nickName == null || nickName.trim() == '');
+
+    	var colors = [];
+    	for( var i = 0; i < 3; i++ ){
+    		colors.push(Math.floor(Math.random() * 255));
+    	}
+    	colors = colors.join(',');
+    	socket.emit("user",nickName);
+
+    	socket.on("online",function( users ){
+			$(".people").text('');
+    		$.each(users, function( i, item ){
+    			$(".people").append('<li class="person" data-name="'+item+'"><span class="name">'+item+'</span><span class="preview"></span></li>');
+    		})
+    	});
+
+		var message = $("#m");
+    	$("form").submit(function(e){
+    		e.preventDefault();
+    		socket.emit( "chat", message.val(), colors);
+    		message.val('');    		
+    	});
+
+    	// chat actions
+    	socket.on("chat",function( getNickName, message, colors ){
+    		if( getNickName == nickName )
+    			var bubbleType = 'me';
+    		else
+    			var bubbleType = 'you';
+
+    		$(".chat").append($('<div class="bubble '+bubbleType+'" style="background:rgb('+colors+')">').text( getNickName + ' : ' + message ));
+    	})
+
+    	// connection control 	
+    	socket.on("isConnect",function( nickName, connect ){
+    		if( connect == "connect" )
+    			var connectMessage = "is connect";
+    		else
+    			var connectMessage = "is disconnect";
+
+    		$(".chat").append('<div class="bubble login"><span>' + nickName + ' : ' + connectMessage + '</span></div>');
+    	})
+
+    	// is typing function 
+    	setInterval(function(){
+    		if( message.val().length > 1 ){
+    			socket.emit("isTyping","typing");
+    		}else{
+    			socket.emit("isTyping","untyping");    			
+    		}
+    	},1000);
+
+    	var typingMSG;    	
+    	socket.on("isTyping", function( nickName, type ){
+    		if( type == "typing" )
+    			typingMSG = "is typing...";
+    		else
+    			typingMSG = "";
+			$('.person[data-name="'+nickName+'"] > .preview').text(typingMSG);
+    	});    	
+
+
+    </script>
+  </body>
+</html>
